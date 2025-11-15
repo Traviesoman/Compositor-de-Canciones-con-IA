@@ -1,15 +1,20 @@
 
 import React, { useState, useCallback } from 'react';
-import { generateLyrics } from './services/geminiService';
+import { generateLyrics, improveLyrics } from './services/geminiService';
 import { SongInputForm } from './components/SongInputForm';
 import { LyricsDisplay } from './components/LyricsDisplay';
 import { MusicNoteIcon } from './components/Icon';
 
 const App: React.FC = () => {
     const [idea, setIdea] = useState<string>('');
+    const [title, setTitle] = useState<string>('');
+    const [style, setStyle] = useState<string>('Pop');
     const [lyrics, setLyrics] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isImproving, setIsImproving] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+
+    const songStyles = ['Balada', 'Ranchera','Cumbia','Corrido Tumbado','Norteña','Corrido','Salsa','Con Banda','Sierreña','Blues', 'Country', 'Electrónica', 'Folk', 'Gospel', 'Jazz', 'Pop', 'Punk', 'Rap', 'Reggaetón', 'Rock'].sort();
 
     const handleGenerateLyrics = useCallback(async () => {
         if (!idea.trim()) {
@@ -22,7 +27,7 @@ const App: React.FC = () => {
         setLyrics('');
 
         try {
-            const result = await generateLyrics(idea);
+            const result = await generateLyrics(idea, style, title);
             setLyrics(result);
         } catch (err) {
             console.error(err);
@@ -30,7 +35,24 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [idea]);
+    }, [idea, style, title]);
+
+    const handleImproveLyrics = useCallback(async () => {
+        if (!lyrics) return;
+
+        setIsImproving(true);
+        setError(null);
+
+        try {
+            const result = await improveLyrics(lyrics, style, title);
+            setLyrics(result);
+        } catch (err) {
+            console.error(err);
+            setError('Hubo un problema al mejorar la letra. Por favor, inténtalo de nuevo.');
+        } finally {
+            setIsImproving(false);
+        }
+    }, [lyrics, style, title]);
 
 
     return (
@@ -51,8 +73,13 @@ const App: React.FC = () => {
                 <SongInputForm
                     idea={idea}
                     setIdea={setIdea}
+                    title={title}
+                    setTitle={setTitle}
+                    style={style}
+                    setStyle={setStyle}
+                    styles={songStyles}
                     onSubmit={handleGenerateLyrics}
-                    isLoading={isLoading}
+                    isLoading={isLoading || isImproving}
                 />
 
                 {error && (
@@ -61,7 +88,12 @@ const App: React.FC = () => {
                     </div>
                 )}
                 
-                <LyricsDisplay lyrics={lyrics} isLoading={isLoading} />
+                <LyricsDisplay 
+                    lyrics={lyrics} 
+                    isLoading={isLoading} 
+                    isImproving={isImproving}
+                    onImprove={handleImproveLyrics}
+                />
             </main>
             
             <footer className="mt-auto pt-8 text-center text-slate-500 text-sm">
