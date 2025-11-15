@@ -1,9 +1,18 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { generateLyrics, improveLyrics } from './services/geminiService';
 import { SongInputForm } from './components/SongInputForm';
 import { LyricsDisplay } from './components/LyricsDisplay';
 import { MusicNoteIcon } from './components/Icon';
+import { SongHistory } from './components/SongHistory';
+
+export interface SongHistoryEntry {
+    id: number;
+    title: string;
+    idea: string;
+    style: string;
+    lyrics: string;
+}
 
 const App: React.FC = () => {
     const [idea, setIdea] = useState<string>('');
@@ -13,6 +22,19 @@ const App: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isImproving, setIsImproving] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [history, setHistory] = useState<SongHistoryEntry[]>([]);
+
+    useEffect(() => {
+        try {
+            const storedHistory = localStorage.getItem('songHistory');
+            if (storedHistory) {
+                setHistory(JSON.parse(storedHistory));
+            }
+        } catch (error) {
+            console.error("Failed to load or parse history from localStorage", error);
+            setHistory([]);
+        }
+    }, []);
 
     const songStyles = ['Balada', 'Ranchera','Cumbia','Corrido Tumbado','Norteña','Corrido','Salsa','Con Banda','Sierreña','Blues', 'Country', 'Electrónica', 'Folk', 'Gospel', 'Jazz', 'Pop', 'Punk', 'Rap', 'Reggaetón', 'Rock'].sort();
 
@@ -29,6 +51,21 @@ const App: React.FC = () => {
         try {
             const result = await generateLyrics(idea, style, title);
             setLyrics(result);
+
+            const newEntry: SongHistoryEntry = {
+                id: Date.now(),
+                title,
+                idea,
+                style,
+                lyrics: result,
+            };
+
+            setHistory(prevHistory => {
+                const updatedHistory = [newEntry, ...prevHistory].slice(0, 20); // Keep max 20 items
+                localStorage.setItem('songHistory', JSON.stringify(updatedHistory));
+                return updatedHistory;
+            });
+
         } catch (err) {
             console.error(err);
             setError('Hubo un problema al generar la letra. Por favor, inténtalo de nuevo.');
@@ -53,6 +90,20 @@ const App: React.FC = () => {
             setIsImproving(false);
         }
     }, [lyrics, style, title]);
+    
+    const handleSelectHistoryItem = (entry: SongHistoryEntry) => {
+        setTitle(entry.title);
+        setIdea(entry.idea);
+        setStyle(entry.style);
+        setLyrics(entry.lyrics);
+        setError(null);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleClearHistory = () => {
+        setHistory([]);
+        localStorage.removeItem('songHistory');
+    };
 
 
     return (
@@ -96,6 +147,12 @@ const App: React.FC = () => {
                 />
             </main>
             
+            <SongHistory
+                history={history}
+                onSelect={handleSelectHistoryItem}
+                onClear={handleClearHistory}
+            />
+
             <footer className="mt-auto pt-8 text-center text-slate-500 text-sm">
                 <p>Creado con React, Tailwind CSS y la API de Google Gemini.</p>
             </footer>
