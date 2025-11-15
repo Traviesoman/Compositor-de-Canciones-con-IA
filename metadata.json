@@ -1,0 +1,5 @@
+{
+  "name": "Compositor de Canciones IA",
+  "description": "Una aplicación web que utiliza la API de Gemini para generar letras de canciones en español basadas en las ideas de los usuarios.",
+  "requestFramePermissions": []
+}
